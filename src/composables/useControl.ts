@@ -1,4 +1,4 @@
-import type { Ref } from "vue";
+import { ref, type Ref, toValue } from "vue";
 import { inject, onMounted, onUnmounted, watch, computed } from "vue";
 import Map from "ol/Map";
 import type {
@@ -95,13 +95,17 @@ export default function useControl<T extends InnerControlType>(
   attrs: Record<string, unknown>,
   eventsToHandle: string[] = [],
 ) {
-  const map = inject<ExtentedMap>("map");
+  const map = inject<Ref<ExtentedMap>>("map", ref());
   const controlBar = inject<Ref<InnerControlType | null> | null>(
     "controlBar",
     null,
   );
 
-  const parent = controlBar !== null ? controlBar?.value : map;
+  const _parent = computed(() => {
+    if (controlBar && toValue(controlBar)) return toValue(controlBar);
+    else if (map && toValue(map)) return toValue(map);
+    return undefined;
+  });
 
   const control = computed<T>(
     () => new ControlType({ ...(properties as Record<string, unknown>) }),
@@ -112,6 +116,7 @@ export default function useControl<T extends InnerControlType>(
   control.value.set("order", attrs.order === undefined ? 0 : attrs.order);
 
   watch(control, (newVal, oldVal) => {
+    const parent = toValue(_parent);
     if (parent) {
       if (parent instanceof Map) {
         parent.removeControl(oldVal);
@@ -125,11 +130,12 @@ export default function useControl<T extends InnerControlType>(
         }
         parent.addControl(newVal);
       }
-      map?.changed();
+      map?.value?.changed();
     }
   });
 
   onMounted(() => {
+    const parent = toValue(_parent);
     if (parent && (parent instanceof Map || parent instanceof Bar)) {
       parent.addControl(control.value);
     }
@@ -151,10 +157,11 @@ export default function useControl<T extends InnerControlType>(
       parent.changed();
     }
 
-    map?.changed();
+    map?.value?.changed();
   });
 
   onUnmounted(() => {
+    const parent = toValue(_parent);
     if (parent && parent instanceof Map) {
       parent
         ?.getControls()
@@ -174,7 +181,7 @@ export default function useControl<T extends InnerControlType>(
       }
     }
     control.value.dispose();
-    map?.changed();
+    map?.value?.changed();
   });
 
   return {

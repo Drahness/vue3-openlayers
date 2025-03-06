@@ -15,7 +15,7 @@ const props = withDefaults(defineProps<Options>(), {
   edge: true,
 });
 
-const map = inject<Map>("map");
+const map = inject<Ref<Map>>("map");
 const vectorSource = inject<Ref<VectorSource> | null>("vectorSource");
 
 const properties = usePropsAsObjectProperties(props);
@@ -28,18 +28,18 @@ const createSnap = () =>
 let snap = createSnap();
 
 watch(properties, () => {
-  map?.removeInteraction(snap);
+  map?.value?.removeInteraction(snap);
   snap = createSnap();
-  map?.addInteraction(snap);
-  map?.changed();
+  map?.value?.addInteraction(snap);
+  map?.value?.changed();
 });
 
 onMounted(() => {
-  map?.addInteraction(snap);
+  map?.value?.addInteraction(snap);
 });
 
 onUnmounted(() => {
-  map?.removeInteraction(snap);
+  map?.value?.removeInteraction(snap);
 });
 
 defineExpose({

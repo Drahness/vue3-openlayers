@@ -37,7 +37,7 @@ defineEmits<
   }
 >();
 
-const map = inject<Map>("map");
+const map = inject<Ref<Map>>("map");
 const properties = usePropsAsObjectProperties(props);
 
 const link = shallowRef(new Link(properties));
@@ -45,17 +45,17 @@ const link = shallowRef(new Link(properties));
 useOpenLayersEvents(link, ["change:active"]);
 
 watch(link, (newVal, oldVal) => {
-  map?.removeInteraction(oldVal);
-  map?.addInteraction(newVal);
-  map?.changed();
+  map?.value?.removeInteraction(oldVal);
+  map?.value?.addInteraction(newVal);
+  map?.value?.changed();
 });
 
 onMounted(() => {
-  map?.addInteraction(link.value);
+  map?.value?.addInteraction(link.value);
 });
 
 onUnmounted(() => {
-  map?.removeInteraction(link.value);
+  map?.value?.removeInteraction(link.value);
 });
 
 provide("stylable", link);

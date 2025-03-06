@@ -12,7 +12,7 @@ import type { Map } from "ol";
 
 const props = defineProps<Options>();
 
-const map = inject<Map>("map");
+const map = inject<Ref<Map>>("map");
 
 const properties = usePropsAsObjectProperties(props);
 
@@ -23,18 +23,18 @@ const dragrotate = computed(() => {
 });
 
 watch(dragrotate, (newVal, oldVal) => {
-  map?.removeInteraction(oldVal);
-  map?.addInteraction(newVal);
+  map?.value?.removeInteraction(oldVal);
+  map?.value?.addInteraction(newVal);
 
-  map?.changed();
+  map?.value?.changed();
 });
 
 onMounted(() => {
-  map?.addInteraction(dragrotate.value);
+  map?.value?.addInteraction(dragrotate.value);
 });
 
 onUnmounted(() => {
-  map?.removeInteraction(dragrotate.value);
+  map?.value?.removeInteraction(dragrotate.value);
 });
 
 defineExpose({

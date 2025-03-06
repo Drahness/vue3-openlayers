@@ -1,21 +1,23 @@
 import {
-  type ComputedRef,
   getCurrentInstance,
-  inject,
   isRef,
+  type MaybeRefOrGetter,
+  onActivated,
+  onDeactivated,
   onMounted,
-  type Ref,
-  type ShallowRef,
+  onUnmounted,
+  toHandlerKey,
+  toValue,
+  watch,
 } from "vue";
 import type BaseObject from "ol/Object";
-import type { EventTypes } from "ol/Observable";
-import type { Vue3OpenlayersGlobalOptions } from "@/types";
 import type BaseEvent from "ol/events/Event";
 import type { ObjectEvent } from "ol/Object";
 import type RenderEvent from "ol/render/Event";
 import type { TileSourceEvent } from "ol/source/Tile";
 import type { ImageSourceEvent } from "ol/source/Image";
 import type { VectorSourceEvent } from "ol/source/Vector";
+import { logDebug, logError } from "@/helpers/logging";
 
 export const COMMON_EVENTS = ["change", "error", "propertychange"];
 export interface CommonEvents {
@@ -102,51 +104,75 @@ export interface VectorSourceEvents extends CommonEvents {
 }
 
 export function useOpenLayersEvents(
-  feature:
-    | BaseObject
-    | Ref<BaseObject>
-    | ShallowRef<BaseObject>
-    | ComputedRef<BaseObject>,
+  feature: MaybeRefOrGetter<BaseObject>,
   eventNames: string[],
 ) {
-  const instance = getCurrentInstance();
-  let globalOptions: Vue3OpenlayersGlobalOptions = {
-    debug: false,
-  };
-  if (instance) {
-    globalOptions = inject("ol-options", globalOptions);
-  }
-
-  function updateOpenLayersEventHandlers() {
-    ([...COMMON_EVENTS, ...eventNames] as EventTypes[]).forEach((eventName) => {
-      let unwrappedFeature: Pick<BaseObject, "on">;
-
-      if (isRef(feature)) {
-        unwrappedFeature = feature.value;
-      } else {
-        unwrappedFeature = feature;
-      }
-
-      unwrappedFeature.on(eventName, (...args: unknown[]) => {
-        if (globalOptions?.debug) {
-          console.debug("[Vue3-OpenLayers Debug] EVENT", eventName, {
-            eventName,
-            args,
-            source: feature,
-          });
-        }
-        instance?.emit(eventName, ...args);
-      });
-    });
-  }
-
-  if (instance) {
-    onMounted(() => {
-      updateOpenLayersEventHandlers();
-    });
-  }
-
+  const events = [...COMMON_EVENTS, ...eventNames].map((evtKey) =>
+    useOpenLayersEvent(evtKey, feature),
+  );
   return {
-    updateOpenLayersEventHandlers,
+    updateOpenLayersEventHandlers: () => {
+      events.forEach((event) => {
+        event?.remove();
+        event?.attach();
+      });
+    },
+    removeOpenLayersEventHandlers: () =>
+      events.forEach((event) => event?.remove()),
+  };
+}
+
+export function useOpenLayersEvent<F extends BaseObject, T extends string>(
+  evtKey: T,
+  obj: MaybeRefOrGetter<F | undefined | null>,
+) {
+  const vm = getCurrentInstance();
+  if (!vm) return;
+  const emits = vm.type.emits;
+  if (evtKey in emits)
+    return logError("[Vue3-OpenLayers Error] EVENT doesnt have emit", evtKey);
+
+  const handlerKey = toHandlerKey(evtKey);
+  const props = vm.vnode.props;
+
+  if (
+    !props ||
+    !(handlerKey in props) ||
+    typeof props[handlerKey] !== "function"
+  )
+    return;
+  const originalHandler = props[handlerKey];
+  const handler = (evt: BaseEvent) => {
+    logDebug(evt.type, {
+      eventName: evt.type,
+      args: [evt],
+      source: evt.target,
+    });
+    return originalHandler(evt);
+  };
+  const attachHandler = (obj: MaybeRefOrGetter<F | undefined | null>) => {
+    const instance = toValue(obj);
+    if (!instance) return logError("ON Instance doesnt exists");
+    instance.on(evtKey as never, handler);
+  };
+  const deattachHandler = (obj: MaybeRefOrGetter<F | undefined | null>) => {
+    const instance = toValue(obj);
+    if (!instance) return logError("[UN] Instance doesnt exists");
+    instance.un(evtKey as never, handler);
+  };
+  onMounted(() => attachHandler(obj));
+  onActivated(() => attachHandler(obj));
+  onUnmounted(() => deattachHandler(obj));
+  onDeactivated(() => deattachHandler(obj));
+
+  if (isRef(obj))
+    watch(obj, (value, oldValue) => {
+      if (oldValue === value) return;
+      if (oldValue != null) deattachHandler(oldValue);
+      if (value != null) attachHandler(value);
+    });
+  return {
+    attach: () => attachHandler(obj),
+    remove: () => deattachHandler(obj),
   };
 }

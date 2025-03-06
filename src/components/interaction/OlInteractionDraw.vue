@@ -34,7 +34,7 @@ defineEmits<
   }
 >();
 
-const map = inject<Map>("map");
+const map = inject<Ref<Map>>("map");
 const vectorSource = inject<Ref<VectorSource> | null>("vectorSource", null);
 
 const {
@@ -114,20 +114,20 @@ watch(
   ],
   () => {
     draw.value.abortDrawing();
-    map?.removeInteraction(draw.value);
+    map?.value?.removeInteraction(draw.value);
     draw.value = createDraw();
     updateOpenLayersEventHandlers();
-    map?.addInteraction(draw.value);
-    map?.changed();
+    map?.value?.addInteraction(draw.value);
+    map?.value?.changed();
   },
 );
 
 onMounted(() => {
-  map?.addInteraction(draw.value);
+  map?.value?.addInteraction(draw.value);
 });
 
 onUnmounted(() => {
-  map?.removeInteraction(draw.value);
+  map?.value?.removeInteraction(draw.value);
 });
 
 provide("stylable", draw);

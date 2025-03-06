@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { inject, watch, onMounted, onUnmounted, computed } from "vue";
+import { computed, inject, onMounted, onUnmounted, watch } from "vue";
 
 import DragBox, {
   type DragBoxEvent,
@@ -32,7 +32,7 @@ defineEmits<
   }
 >();
 
-const map = inject<Map>("map");
+const map = inject<Ref<Map>>("map");
 
 const properties = usePropsAsObjectProperties(props);
 
@@ -41,18 +41,18 @@ const dragbox = computed(() => new DragBox(properties));
 useOpenLayersEvents(dragbox, ["boxcancel", "boxdrag", "boxend", "boxstart"]);
 
 watch(dragbox, (newVal, oldVal) => {
-  map?.removeInteraction(oldVal);
-  map?.addInteraction(newVal);
+  map?.value?.removeInteraction(oldVal);
+  map?.value?.addInteraction(newVal);
 
-  map?.changed();
+  map?.value?.changed();
 });
 
 onMounted(() => {
-  map?.addInteraction(dragbox.value);
+  map?.value?.addInteraction(dragbox.value);
 });
 
 onUnmounted(() => {
-  map?.removeInteraction(dragbox.value);
+  map?.value?.removeInteraction(dragbox.value);
 });
 
 defineExpose({

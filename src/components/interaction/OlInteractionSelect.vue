@@ -3,8 +3,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, onMounted, onUnmounted, provide, watch } from "vue";
-import Select, { SelectEvent, type Options } from "ol/interaction/Select";
+import {
+  computed,
+  inject,
+  onMounted,
+  onUnmounted,
+  provide,
+  type Ref,
+  watch,
+} from "vue";
+import Select, { type Options, SelectEvent } from "ol/interaction/Select";
 import Style from "ol/style/Style";
 import type Map from "ol/Map";
 import usePropsAsObjectProperties from "@/composables/usePropsAsObjectProperties";
@@ -25,7 +33,7 @@ type Emits = CommonEvents & {
 };
 defineEmits<Emits>();
 
-const map = inject<Map>("map");
+const map = inject<Ref<Map>>("map");
 const properties = usePropsAsObjectProperties(props);
 
 const select = computed(
@@ -39,18 +47,18 @@ const select = computed(
 useOpenLayersEvents(select, ["select"]);
 
 watch(select, (newVal, oldVal) => {
-  map?.removeInteraction(oldVal);
-  map?.addInteraction(newVal);
+  map?.value?.removeInteraction(oldVal);
+  map?.value?.addInteraction(newVal);
 
-  map?.changed();
+  map?.value?.changed();
 });
 
 onMounted(() => {
-  map?.addInteraction(select.value);
+  map?.value?.addInteraction(select.value);
 });
 
 onUnmounted(() => {
-  map?.removeInteraction(select.value);
+  map?.value?.removeInteraction(select.value);
 });
 
 provide("stylable", select);
