@@ -1,85 +1,76 @@
 <template>
-  <div ref="mapRef">
+  <template v-if="!instanceMode">
+    <div ref="mapRef" v-bind="$attrs">
+      <slot></slot>
+    </div>
+  </template>
+  <template v-else>
     <slot></slot>
-  </div>
+  </template>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, provide, ref, watch } from "vue";
-import type { AtPixelOptions } from "ol/Map";
-import Map, { type MapOptions } from "ol/Map";
-import type { FeatureLike } from "ol/Feature";
-import type { SimpleGeometry } from "ol/geom";
-import type { Layer } from "ol/layer";
+import Map, { type AtPixelOptions, type MapOptions } from "ol/Map";
+import {
+  computed,
+  markRaw,
+  onActivated,
+  onDeactivated,
+  onMounted,
+  onUnmounted,
+  provide,
+  readonly,
+  ref,
+  toValue,
+  watch,
+} from "vue";
+import usePropsAsObjectProperties from "../../composables/usePropsAsObjectProperties";
 import type { Pixel } from "ol/pixel";
+import type { FeatureLike } from "ol/Feature";
+import type { Layer } from "ol/layer";
 import type { Source } from "ol/source";
+import type { SimpleGeometry } from "ol/geom";
+import { type CommonEvents, useOpenLayersEvents } from "@/composables";
 import type { Coordinate } from "ol/coordinate";
-import usePropsAsObjectProperties from "@/composables/usePropsAsObjectProperties";
-import { mergeProperties } from "@/helpers/properties";
-import type { CommonEvents } from "@/composables";
-import type { MapBrowserEvent, MapEvent } from "ol";
-import type { ObjectEvent } from "ol/Object";
-import type RenderEvent from "ol/render/Event";
 
 type Props = MapOptions & { instance?: Map };
 const props = defineProps<Props>();
+const instanceMode = readonly(ref(!!props.instance));
 
-type Emits = CommonEvents & {
-  (e: "change:layerGroup", event: ObjectEvent): void;
-  (e: "change:size", event: ObjectEvent): void;
-  (e: "change:target", event: ObjectEvent): void;
-  (e: "change:view", event: ObjectEvent): void;
-  (e: "click", event: MapBrowserEvent<UIEvent>): void;
-  (e: "dblclick", event: MapBrowserEvent<UIEvent>): void;
-  (e: "singleclick", event: MapBrowserEvent<UIEvent>): void;
-  (e: "loadstart", event: MapEvent): void;
-  (e: "loadend", event: MapEvent): void;
-  (e: "pointerdrag", event: MapBrowserEvent<UIEvent>): void;
-  (e: "pointermove", event: MapBrowserEvent<UIEvent>): void;
-  (e: "movestart", event: MapEvent): void;
-  (e: "moveend", event: MapEvent): void;
-  (e: "postrender", event: MapEvent): void;
-  (e: "precompose", event: RenderEvent): void;
-  (e: "postcompose", event: RenderEvent): void;
-  (e: "rendercomplete", event: RenderEvent): void;
-};
-const emit = defineEmits<Emits>();
-
+defineEmits<
+  CommonEvents & {
+    (e: "change:layerGroup", event: ObjectEvent): void;
+    (e: "change:size", event: ObjectEvent): void;
+    (e: "change:target", event: ObjectEvent): void;
+    (e: "change:view", event: ObjectEvent): void;
+    (e: "click", event: MapBrowserEvent<UIEvent>): void;
+    (e: "dblclick", event: MapBrowserEvent<UIEvent>): void;
+    (e: "singleclick", event: MapBrowserEvent<UIEvent>): void;
+    (e: "loadstart", event: MapEvent): void;
+    (e: "loadend", event: MapEvent): void;
+    (e: "pointerdrag", event: MapBrowserEvent<UIEvent>): void;
+    (e: "pointermove", event: MapBrowserEvent<UIEvent>): void;
+    (e: "movestart", event: MapEvent): void;
+    (e: "moveend", event: MapEvent): void;
+    (e: "postrender", event: MapEvent): void;
+    (e: "precompose", event: RenderEvent): void;
+    (e: "postcompose", event: RenderEvent): void;
+    (e: "rendercomplete", event: RenderEvent): void;
+  }
+>();
 const properties = usePropsAsObjectProperties({
   ...props,
   instance: undefined,
 });
-
-const mapRef = ref<string | HTMLElement | undefined>(undefined);
-let map: Map | undefined =
-  props.instance || new Map({ ...(properties as MapOptions) });
-
-watch(
-  properties,
-  () => {
-    const p = props.instance
-      ? mergeProperties(properties, props.instance.getProperties())
-      : properties;
-    map?.setProperties(p);
-  },
-  { immediate: true },
-);
-
-onMounted(() => {
-  // bind the map to the component template if not re-using an existing one passed via prop.
-  if (!props.instance) {
-    map?.setTarget(mapRef.value);
-  }
+const instance = computed(() => {
+  if (instanceMode.value) return props.instance;
+  else return markRaw(new Map({ ...(properties as MapOptions) }));
 });
 
-onUnmounted(() => {
-  if (!props.instance) {
-    map?.setTarget(undefined);
-  }
-  map = undefined;
-});
+const mapTarget = computed(() => instance.value?.getTargetElement());
+const mapRef = ref();
 
-provide("map", map);
+provide("map", instance);
 
 const forEachFeatureAtPixel = (
   pixel: Pixel,
@@ -89,44 +80,84 @@ const forEachFeatureAtPixel = (
     arg2: SimpleGeometry,
   ) => unknown,
   options?: AtPixelOptions,
-) => map?.forEachFeatureAtPixel(pixel, callback, options);
+) => toValue(instance)?.forEachFeatureAtPixel(pixel, callback, options);
+
+useOpenLayersEvents(instance, [
+  "change",
+  "error",
+  "propertychange",
+  "click",
+  "change:size",
+  "change:target",
+  "change:view",
+  "change:layergroup",
+  "dblclick",
+  "singleclick",
+  "pointerdrag",
+  "pointermove",
+  "movestart",
+  "moveend",
+  "postrender",
+  "precompose",
+  "rendercomplete",
+  "loadstart",
+  "loadend",
+]);
+
 const getCoordinateFromPixel = (pixel: Coordinate) =>
-  map?.getCoordinateFromPixel(pixel);
-const render = () => map?.render();
-const updateSize = () => map?.updateSize();
+  toValue(instance)?.getCoordinateFromPixel(pixel);
+const render = () => toValue(instance)?.render();
+const updateSize = () => toValue(instance)?.updateSize();
+const onLoadEnd = () => {
+  const map = toValue(instance);
+  if (!map) return;
+  map.getTargetElement().classList.add("ol-map-fully-loaded");
+  map.getTargetElement().classList.remove("ol-map-loading");
+};
+const onLoadStart = () => {
+  const map = toValue(instance);
+  if (!map) return;
+  map.getTargetElement().classList.add("ol-map");
+  map.getTargetElement().classList.add("ol-map-loading");
+  map.getTargetElement().classList.remove("ol-map-fully-loaded");
+};
 
-map.on("change", (event) => emit("change", event));
-map.on("error", (event) => emit("error", event));
-map.on("propertychange", (event) => emit("propertychange", event));
-map.on("click", (event) => emit("click", event));
-map.on("change:size", (event) => emit("change:size", event));
-map.on("change:target", (event) => emit("change:target", event));
-map.on("change:view", (event) => emit("change:view", event));
-map.on("dblclick", (event) => emit("dblclick", event));
-map.on("singleclick", (event) => emit("singleclick", event));
-map.on("pointerdrag", (event) => emit("pointerdrag", event));
-map.on("pointermove", (event) => emit("pointermove", event));
-map.on("movestart", (event) => emit("movestart", event));
-map.on("moveend", (event) => emit("moveend", event));
-map.on("postrender", (event) => emit("postrender", event));
-map.on("precompose", (event) => emit("precompose", event));
-map.on("postcompose", (event) => emit("postcompose", event));
-map.on("rendercomplete", (event) => emit("rendercomplete", event));
-map.on("loadstart", (event) => {
-  map?.getTargetElement().classList.add("ol-map");
-  map?.getTargetElement().classList.add("ol-map-loading");
-  map?.getTargetElement().classList.remove("ol-map-fully-loaded");
-  emit("loadstart", event);
-});
-map.on("loadend", (event) => {
-  map?.getTargetElement().classList.add("ol-map-fully-loaded");
-  map?.getTargetElement().classList.remove("ol-map-loading");
-  emit("loadend", event);
+const mount = () => {
+  // bind the map to the component template if not re-using an existing one passed via prop.
+  if (!instanceMode.value) instance.value?.setTarget(mapRef.value);
+  instance.value?.on("loadstart", onLoadStart);
+  instance.value?.on("loadend", onLoadEnd);
+};
+const unmount = () => {
+  const _map = instance.value;
+  if (!_map) return;
+  if (!instanceMode.value) _map.setTarget(undefined);
+  instance.value.un("loadstart", onLoadStart);
+  instance.value.un("loadend", onLoadEnd);
+};
+onMounted(mount);
+onActivated(mount);
+onDeactivated(unmount);
+onUnmounted(() => {
+  unmount();
+  if (!instanceMode.value) instance.value?.dispose();
 });
 
+watch(properties, () => {
+  if (!instanceMode.value)
+    instance.value?.setProperties({
+      ...properties,
+      target: properties.target ?? toValue(mapRef),
+    });
+  else
+    instance.value?.setProperties({
+      ...properties,
+      target: properties.target ?? toValue(mapTarget),
+    });
+});
 defineExpose({
-  map,
-  mapRef,
+  map: readonly(instance),
+  mapRef: mapTarget,
   forEachFeatureAtPixel,
   getCoordinateFromPixel,
   render,

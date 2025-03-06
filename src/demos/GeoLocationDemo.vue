@@ -47,7 +47,6 @@ const map = ref(null);
 const position = ref([]);
 
 const geoLocChange = (event: ObjectEvent) => {
-  console.log("AAAAA", event);
   position.value = event.target.getPosition();
   view.value?.setCenter(event.target?.getPosition());
 };

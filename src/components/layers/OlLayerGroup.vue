@@ -10,6 +10,7 @@ import {
   onMounted,
   onUnmounted,
   provide,
+  type Ref,
   shallowRef,
   watch,
 } from "vue";
@@ -48,7 +49,7 @@ type Emits = CommonEvents &
   };
 defineEmits<Emits>();
 
-const map = inject<Map>("map");
+const map = inject<Ref<Map>>("map");
 const properties = usePropsAsObjectProperties(props);
 
 const layerGroup = shallowRef(new LayerGroup(properties as Options));
@@ -80,7 +81,7 @@ watch(
 );
 
 onMounted(() => {
-  map?.addLayer(layerGroup.value);
+  map?.value?.addLayer(layerGroup.value);
   if (parentLayerGroup) {
     const layerCollection = parentLayerGroup.getLayers();
     layerCollection.push(layerGroup.value);
@@ -89,7 +90,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  map?.removeLayer(layerGroup.value);
+  map?.value?.removeLayer(layerGroup.value);
 });
 
 provide("layerGroup", layerGroup.value);

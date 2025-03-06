@@ -3,7 +3,7 @@
 </template>
 <script setup lang="ts">
 import type { Extent } from "ol/extent";
-import { inject, watch, onMounted } from "vue";
+import { inject, onMounted, type Ref, watch } from "vue";
 import Projection from "ol/proj/Projection";
 import type { AnimationOptions, FitOptions, ViewOptions } from "ol/View";
 import View from "ol/View";
@@ -33,7 +33,7 @@ const props = withDefaults(defineProps<ViewOptions>(), {
   smoothResolutionConstraint: true,
 });
 
-const map = inject<Map>("map");
+const map = inject<Ref<Map>>("map");
 const properties = usePropsAsObjectProperties(props);
 
 const createProp = () => ({
@@ -55,7 +55,7 @@ useOpenLayersEvents(view, [
 ]);
 
 onMounted(() => {
-  map?.setView(view);
+  map?.value?.setView(view);
 });
 
 watch(properties, () => {

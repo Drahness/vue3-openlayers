@@ -34,7 +34,7 @@ defineEmits<
   }
 >();
 
-const map = inject<Map>("map");
+const map = inject<Ref<Map>>("map");
 const vectorSource = inject<Ref<VectorSource> | null>("vectorSource", null);
 
 const {
@@ -85,19 +85,19 @@ watch(
   ],
   () => {
     modify.dispose();
-    map?.removeInteraction(modify);
+    map?.value?.removeInteraction(modify);
     modify = createModify();
-    map?.addInteraction(modify);
-    map?.changed();
+    map?.value?.addInteraction(modify);
+    map?.value?.changed();
   },
 );
 
 onMounted(() => {
-  map?.addInteraction(modify);
+  map?.value?.addInteraction(modify);
 });
 
 onUnmounted(() => {
-  map?.removeInteraction(modify);
+  map?.value?.removeInteraction(modify);
 });
 
 provide("stylable", ref(modify));

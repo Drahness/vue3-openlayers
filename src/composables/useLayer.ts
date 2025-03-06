@@ -1,4 +1,12 @@
-import { inject, onUnmounted, ref, type Ref, shallowRef, watch } from "vue";
+import {
+  inject,
+  onMounted,
+  onUnmounted,
+  ref,
+  type Ref,
+  shallowRef,
+  watch,
+} from "vue";
 
 import type { Map } from "ol";
 import type LayerGroup from "ol/layer/Group";
@@ -25,7 +33,8 @@ export default function useLayer<T extends Layer>(
 
   useOpenLayersEvents(layer, [...LAYER_EVENTS, ...eventsToHandle]);
 
-  const map = inject<Map>("map");
+  const map = inject<Ref<Map | undefined>>("map", ref());
+
   const layerGroup = inject<LayerGroup | null>("layerGroup", null);
   const overviewMap = inject<Ref<OverviewMap | null> | null>(
     "overviewMap",
@@ -55,7 +64,7 @@ export default function useLayer<T extends Layer>(
       } else if (overviewMap?.value) {
         overviewMap.value?.getOverviewMap().addLayer(layer.value);
       } else {
-        map?.addLayer(layer.value);
+        map?.value?.addLayer(layer.value);
       }
       layerAdded.value = true;
     }
@@ -68,14 +77,26 @@ export default function useLayer<T extends Layer>(
       overviewMap.value?.getOverviewMap().removeLayer(layer.value);
       overviewMap.value?.changed();
     } else {
-      map?.removeLayer(layer.value);
+      map?.value?.removeLayer(layer.value);
     }
     layerAdded.value = false;
   }
 
   onUnmounted(removeLayer);
-
+  onMounted(() => {
+    removeLayer();
+    updateLayers();
+  });
   watch(() => properties, updateLayers, { deep: true, immediate: true });
+
+  watch(
+    map,
+    () => {
+      removeLayer();
+      updateLayers();
+    },
+    { deep: false, immediate: true },
+  );
 
   if (overviewMap?.value) {
     watch(overviewMap, () => {

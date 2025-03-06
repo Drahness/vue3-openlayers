@@ -59,13 +59,13 @@
 import { Feature, Map, type MapBrowserEvent } from "ol";
 import { LineString } from "ol/geom";
 import { type DrawEvent } from "ol/interaction/Draw";
-import { onMounted, ref } from "vue";
+import { onMounted, type Ref, ref } from "vue";
 import { getLength } from "ol/sphere";
 import type { EventsKey } from "ol/events";
 import type { Coordinate } from "ol/coordinate";
 import { unByKey } from "ol/Observable";
 
-const mapRef = ref<{ map: Map } | null>(null);
+const mapRef = ref<{ map: Ref<Map> } | null>(null);
 const drawType = ref("LineString");
 const sketch = ref<Feature | null>(null);
 
@@ -129,8 +129,8 @@ function formatLength(line: LineString) {
 }
 
 onMounted(() => {
-  mapRef.value?.map.on("pointermove", showHelpInfoOnPointermove);
-  mapRef.value?.map.getViewport().addEventListener("mouseout", function () {
+  mapRef.value?.map?.on("pointermove", showHelpInfoOnPointermove);
+  mapRef.value?.map?.getViewport().addEventListener("mouseout", function () {
     helpTooltipCoord.value = null;
     helpTooltipText.value = "";
   });

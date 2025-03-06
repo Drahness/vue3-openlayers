@@ -11,6 +11,7 @@ import {
   inject,
   onMounted,
   onUnmounted,
+  type Ref,
   ref,
   shallowRef,
   watch,
@@ -45,7 +46,7 @@ type Emits = CommonEvents & {
 };
 defineEmits<Emits>();
 
-const map = inject<Map>("map");
+const map = inject<Ref<Map>>("map");
 
 const htmlContent = ref<HTMLElement>();
 
@@ -75,14 +76,14 @@ const setPositioning = (positioning: Positioning) =>
   overlay.value.setPositioning(positioning);
 
 function removeOverlay(ov: Overlay) {
-  const removed = map?.removeOverlay(ov);
+  const removed = map?.value?.removeOverlay(ov);
   if (!removed) {
     console.warn("couldn't find matching overlay to remove", overlay.value);
   }
 }
 
 onMounted(() => {
-  map?.addOverlay(overlay.value);
+  map?.value?.addOverlay(overlay.value);
 });
 
 onUnmounted(() => removeOverlay(overlay.value));

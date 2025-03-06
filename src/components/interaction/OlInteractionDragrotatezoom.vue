@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { inject, watch, onMounted, onUnmounted, computed } from "vue";
+import { inject, watch, onMounted, onUnmounted, computed, type Ref } from "vue";
 import DragRotateAndZoom, {
   type Options,
 } from "ol/interaction/DragRotateAndZoom";
@@ -12,23 +12,23 @@ import usePropsAsObjectProperties from "@/composables/usePropsAsObjectProperties
 
 const props = defineProps<Options>();
 
-const map = inject<Map>("map");
+const map = inject<Ref<Map>>("map");
 const properties = usePropsAsObjectProperties(props);
 const dragRotateZoom = computed(() => new DragRotateAndZoom(properties));
 
 watch(dragRotateZoom, (newVal, oldVal) => {
-  map?.removeInteraction(oldVal);
-  map?.addInteraction(newVal);
+  map?.value?.removeInteraction(oldVal);
+  map?.value?.addInteraction(newVal);
 
-  map?.changed();
+  map?.value?.changed();
 });
 
 onMounted(() => {
-  map?.addInteraction(dragRotateZoom.value);
+  map?.value?.addInteraction(dragRotateZoom.value);
 });
 
 onUnmounted(() => {
-  map?.removeInteraction(dragRotateZoom.value);
+  map?.value?.removeInteraction(dragRotateZoom.value);
 });
 
 defineExpose({

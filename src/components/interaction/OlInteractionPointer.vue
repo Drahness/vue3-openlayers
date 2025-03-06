@@ -3,7 +3,14 @@
 </template>
 
 <script setup lang="ts">
-import { inject, watch, onMounted, onUnmounted, shallowRef } from "vue";
+import {
+  inject,
+  watch,
+  onMounted,
+  onUnmounted,
+  shallowRef,
+  type Ref,
+} from "vue";
 import Pointer, { type Options } from "ol/interaction/Pointer";
 import type Map from "ol/Map";
 import usePropsAsObjectProperties from "@/composables/usePropsAsObjectProperties";
@@ -34,7 +41,7 @@ type Emits = CommonEvents & {
 };
 const emit = defineEmits<Emits>();
 
-const map = inject<Map>("map");
+const map = inject<Ref<Map>>("map");
 const properties = usePropsAsObjectProperties(props);
 
 const pointer = shallowRef(
@@ -61,17 +68,17 @@ const pointer = shallowRef(
 useOpenLayersEvents(pointer, ["change:active"]);
 
 watch(pointer, (newVal, oldVal) => {
-  map?.removeInteraction(oldVal);
-  map?.addInteraction(newVal);
-  map?.changed();
+  map?.value?.removeInteraction(oldVal);
+  map?.value?.addInteraction(newVal);
+  map?.value?.changed();
 });
 
 onMounted(() => {
-  map?.addInteraction(pointer.value);
+  map?.value?.addInteraction(pointer.value);
 });
 
 onUnmounted(() => {
-  map?.removeInteraction(pointer.value);
+  map?.value?.removeInteraction(pointer.value);
 });
 
 defineExpose({
